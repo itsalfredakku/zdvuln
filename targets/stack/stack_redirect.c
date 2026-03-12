@@ -26,8 +26,8 @@ void vulnerable_function(void) {
     printf("[*] Enter input: ");
     fflush(stdout);
 
-    /* BUG: unbounded read */
-    gets(buffer);
+    /* BUG: reads far more than buffer can hold */
+    fgets(buffer, 1024, stdin);
 }
 
 int main(void) {

@@ -8,22 +8,25 @@ pub fn build(b: *std.Build) void {
     const no_pie = b.option(bool, "no-pie", "Disable position-independent executable") orelse true;
 
     // --- C compilation flags ---
-    var common_flags = std.ArrayList([]const u8).init(b.allocator);
-    defer common_flags.deinit();
+    var flag_buf: [4][]const u8 = undefined;
+    var flag_count: usize = 0;
 
     // Always include debug info for GDB analysis
-    common_flags.append("-g") catch unreachable;
-    common_flags.append("-O0") catch unreachable;
+    flag_buf[flag_count] = "-g";
+    flag_count += 1;
+    flag_buf[flag_count] = "-O0";
+    flag_count += 1;
 
     if (no_canary) {
-        common_flags.append("-fno-stack-protector") catch unreachable;
+        flag_buf[flag_count] = "-fno-stack-protector";
+        flag_count += 1;
     }
     if (no_pie) {
-        common_flags.append("-fno-pie") catch unreachable;
-        common_flags.append("-no-pie") catch unreachable;
+        flag_buf[flag_count] = "-fno-pie";
+        flag_count += 1;
     }
 
-    const flags = common_flags.items;
+    const flags = flag_buf[0..flag_count];
 
     // ========================================
     // Stack targets
@@ -64,19 +67,23 @@ pub fn build(b: *std.Build) void {
     // ========================================
     const crash_analyzer = b.addExecutable(.{
         .name = "crash-analyzer",
-        .root_source_file = b.path("tools/analyzer/crash_analyzer.zig"),
-        .target = target,
-        .optimize = .Debug,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tools/analyzer/crash_analyzer.zig"),
+            .target = target,
+            .optimize = .Debug,
+        }),
     });
     b.installArtifact(crash_analyzer);
 
     const packet_sender = b.addExecutable(.{
         .name = "packet-sender",
-        .root_source_file = b.path("tools/harness/packet_sender.zig"),
-        .target = target,
-        .optimize = .Debug,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tools/harness/packet_sender.zig"),
+            .target = target,
+            .optimize = .Debug,
+            .link_libc = true,
+        }),
     });
-    packet_sender.linkLibC();
     b.installArtifact(packet_sender);
 
     // ========================================
@@ -84,25 +91,31 @@ pub fn build(b: *std.Build) void {
     // ========================================
     const pattern_gen = b.addExecutable(.{
         .name = "pattern-gen",
-        .root_source_file = b.path("tools/exploit/pattern_gen.zig"),
-        .target = target,
-        .optimize = .Debug,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tools/exploit/pattern_gen.zig"),
+            .target = target,
+            .optimize = .Debug,
+        }),
     });
     b.installArtifact(pattern_gen);
 
     const rop_scanner = b.addExecutable(.{
         .name = "rop-scanner",
-        .root_source_file = b.path("tools/exploit/rop_scanner.zig"),
-        .target = target,
-        .optimize = .Debug,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tools/exploit/rop_scanner.zig"),
+            .target = target,
+            .optimize = .Debug,
+        }),
     });
     b.installArtifact(rop_scanner);
 
     const zdf_craft = b.addExecutable(.{
         .name = "zdf-craft",
-        .root_source_file = b.path("tools/exploit/zdf_craft.zig"),
-        .target = target,
-        .optimize = .Debug,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tools/exploit/zdf_craft.zig"),
+            .target = target,
+            .optimize = .Debug,
+        }),
     });
     b.installArtifact(zdf_craft);
 }
@@ -114,20 +127,23 @@ fn addCTarget(
     sources: []const []const u8,
     flags: []const []const u8,
 ) *std.Build.Step.Compile {
-    const exe = b.addExecutable(.{
-        .name = name,
+    const mod = b.createModule(.{
         .target = target,
         .optimize = .Debug,
+        .link_libc = true,
     });
 
     for (sources) |src| {
-        exe.addCSourceFile(.{
+        mod.addCSourceFile(.{
             .file = b.path(src),
             .flags = flags,
         });
     }
 
-    exe.linkLibC();
+    const exe = b.addExecutable(.{
+        .name = name,
+        .root_module = mod,
+    });
     b.installArtifact(exe);
     return exe;
 }

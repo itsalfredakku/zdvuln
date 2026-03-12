@@ -26,7 +26,8 @@ pub fn main() !void {
     defer std.process.argsFree(allocator, args);
 
     if (args.len < 5) {
-        const stderr = std.io.getStdErr().writer();
+        var stderr_w = std.fs.File.stderr().writer(@constCast(&.{}));
+        const stderr = &stderr_w.interface;
         try stderr.print("Usage: {s} <host> <port> <type> <data>\n", .{args[0]});
         try stderr.print("  type: 1=ECHO, 2=AUTH, 3=DATA\n", .{});
         try stderr.print("  data: string payload (use quotes for spaces)\n", .{});
@@ -45,7 +46,10 @@ pub fn main() !void {
     };
     const data = args[4];
 
-    const stdout = std.io.getStdOut().writer();
+    var stdout_buf: [4096]u8 = undefined;
+    var stdout_w = std.fs.File.stdout().writer(&stdout_buf);
+    const stdout = &stdout_w.interface;
+    defer stdout.flush() catch {};
     try stdout.print("=== Packet Sender ===\n", .{});
     try stdout.print("Target:  {s}:{}\n", .{ host, port });
     try stdout.print("Type:    0x{x:0>2}\n", .{pkt_type});
@@ -57,11 +61,11 @@ pub fn main() !void {
         .length = @intCast(data.len),
     };
 
-    var packet = std.ArrayList(u8).init(allocator);
-    defer packet.deinit();
+    var packet: std.ArrayList(u8) = .{};
+    defer packet.deinit(allocator);
 
-    try packet.appendSlice(std.mem.asBytes(&header));
-    try packet.appendSlice(data);
+    try packet.appendSlice(allocator, std.mem.asBytes(&header));
+    try packet.appendSlice(allocator, data);
 
     try stdout.print("Packet:  {} bytes total\n\n", .{packet.items.len});
 

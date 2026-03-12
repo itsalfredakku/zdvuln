@@ -15,24 +15,27 @@ pub fn main() !void {
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 
+    var stdout_buf: [4096]u8 = undefined;
+    var stdout_w = std.fs.File.stdout().writer(&stdout_buf);
+    var stderr_w = std.fs.File.stderr().writer(@constCast(&.{}));
+    const stdout = &stdout_w.interface;
+    const stderr = &stderr_w.interface;
+    defer stdout.flush() catch {};
+
     if (args.len < 2) {
-        const stderr = std.io.getStdErr().writer();
         try stderr.print("Usage: {s} <crash-file>\n", .{args[0]});
         std.process.exit(1);
     }
 
     const file_path = args[1];
-    const stdout = std.io.getStdOut().writer();
 
     const file = std.fs.cwd().openFile(file_path, .{}) catch |err| {
-        const stderr = std.io.getStdErr().writer();
         try stderr.print("Error opening '{s}': {}\n", .{ file_path, err });
         std.process.exit(1);
     };
     defer file.close();
 
     const data = file.readToEndAlloc(allocator, 1024 * 1024) catch |err| {
-        const stderr = std.io.getStdErr().writer();
         try stderr.print("Error reading file: {}\n", .{err});
         std.process.exit(1);
     };
