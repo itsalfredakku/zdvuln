@@ -26,7 +26,13 @@ sudo apt install -y -qq \
 # --- Zig ---
 echo "[2/5] Installing Zig..."
 ZIG_VERSION="0.13.0"
-ZIG_ARCHIVE="zig-linux-x86_64-${ZIG_VERSION}.tar.xz"
+ARCH=$(uname -m)
+case "$ARCH" in
+    x86_64)  ZIG_ARCH="x86_64" ;;
+    aarch64) ZIG_ARCH="aarch64" ;;
+    *)       echo "  Unsupported architecture: $ARCH"; exit 1 ;;
+esac
+ZIG_ARCHIVE="zig-linux-${ZIG_ARCH}-${ZIG_VERSION}.tar.xz"
 ZIG_URL="https://ziglang.org/download/${ZIG_VERSION}/${ZIG_ARCHIVE}"
 
 if command -v zig &>/dev/null; then
@@ -37,7 +43,7 @@ else
         wget -q "$ZIG_URL"
     fi
     sudo tar -xf "$ZIG_ARCHIVE" -C /opt/
-    sudo ln -sf "/opt/zig-linux-x86_64-${ZIG_VERSION}/zig" /usr/local/bin/zig
+    sudo ln -sf "/opt/zig-linux-${ZIG_ARCH}-${ZIG_VERSION}/zig" /usr/local/bin/zig
     echo "  Installed: $(zig version)"
 fi
 
