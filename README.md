@@ -93,6 +93,17 @@ Python/pwntools scripts in `exploits/<category>/`:
 | `heap_overflow_exploit.py` | `heap-overflow` | Adjacent field corruption → flag flip |
 | `parser_server_exploit.py` | `parser-server` | Protocol length overflow → RIP control |
 
+### Exploit Library
+
+`exploits/lib/exploit_utils.py` provides reusable primitives for writing new exploits:
+
+- `ZdTarget` — binary launcher with ELF symbol resolution and GDB attach
+- `leak_address` — parse hex addresses from program output
+- `overflow_payload` / `field_overwrite` — build common overflow payloads
+- `protocol_packet` — construct length-prefixed packets for parser targets
+- `leak_stack_values` / `find_input_offset` — format string info leak helpers
+- `find_rip_offset` — cyclic pattern-based RIP offset detection
+
 ## Usage Examples
 
 ```bash
@@ -113,7 +124,7 @@ gdb ./zig-out/bin/stack-basic
 ./zig-out/bin/zdf-craft overread 1000 1000 4 -o evil.zdf
 ./zig-out/bin/image-parser evil.zdf
 
-# fuzz a target with AFL++
+# fuzz a target with AFL++ (uses per-target seed corpus)
 ./scripts/fuzz.sh stack-basic
 
 # analyze a crash
@@ -121,6 +132,9 @@ gdb ./zig-out/bin/stack-basic
 
 # run an exploit (requires pwntools)
 python3 exploits/stack/stack_redirect_exploit.py
+
+# run all integration tests
+./scripts/test-all.sh
 ```
 
 ## Guides
@@ -133,15 +147,33 @@ python3 exploits/stack/stack_redirect_exploit.py
 | `guides/crash-triage.md` | Crash classification and exploitability assessment |
 | `guides/mitigations.md` | Canary, NX, ASLR, PIE, RELRO — how they work, how to bypass |
 
+## Testing
+
+```bash
+./scripts/test-all.sh
+```
+
+Runs a full integration check: build verification, binary existence, target smoke tests, tool smoke tests, and exploit validation (requires pwntools).
+
+## Fuzzing
+
+Pre-built seed corpus is included per target in `fuzzing/corpus/<target>/`. Each seed directory contains inputs tailored to the specific vulnerability — boundary-length strings, format specifiers, negative values, etc.
+
+```bash
+./scripts/fuzz.sh stack-basic        # uses fuzzing/corpus/stack-basic/ as seed
+./scripts/fuzz.sh format-string 120  # 2-minute run with format string seeds
+```
+
 ## Project Structure
 
 ```
 targets/          Vulnerable C programs, by category
 tools/            Zig analysis and exploit dev tools
 exploits/         Python/pwntools exploit scripts, by category
-fuzzing/          AFL++ corpus and crash outputs
+exploits/lib/     Reusable exploit primitives (exploit_utils.py)
+fuzzing/          AFL++ seed corpus (per-target) and crash outputs
 guides/           Technical reference and learning roadmap
-scripts/          Lab setup and fuzzing automation
+scripts/          Lab setup, fuzzing automation, and integration tests
 build.zig         Unified build system
 ```
 
