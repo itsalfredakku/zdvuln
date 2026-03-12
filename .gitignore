@@ -1,0 +1,16 @@
+# Build artifacts
+zig-out/
+.zig-cache/
+
+# Fuzzing outputs (keep seeds, ignore bulk crashes)
+fuzzing/crashes/*/
+!fuzzing/crashes/.gitkeep
+
+# Editor
+.vscode/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
