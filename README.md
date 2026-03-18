@@ -1,4 +1,4 @@
-# zdvuln
+# Zero-Day Vulnerability Research 
 
 A hands-on lab for learning memory corruption vulnerabilities from the inside out — stack overflows, heap exploits, format strings, parser bugs, race conditions, and more. Includes 14 intentionally vulnerable C programs, a Zig-native exploit toolkit, and a guided roadmap from first crash to ROP chains.
 
